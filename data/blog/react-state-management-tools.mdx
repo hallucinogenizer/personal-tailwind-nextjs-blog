@@ -1,0 +1,216 @@
+---
+title: "State Management Tools in React"
+date: 2023-05-08T14:56:02+05:00
+summary: "ContextAPI, Redux, Jotai, what to use?"
+featured_image: "/images/react-state-management.png"
+draft: false
+---
+
+Let's explore our options for state management:
+
+# Using Prop Drilling
+
+When making a decision about React state management, we must start off with a simple `useState` hook and try to pass the `[state, setState]` to child components if needed.
+
+> If the component tree is very small and the state is very simple, there is no harm in a little prop drilling.
+
+# Using "React Query" or "SWR"
+
+In most cases, what is stored in state is some data that was fetched from the server.
+
+## Without SWR
+
+For example, if we are creating the following app (example from SWR Docs):
+
+![SWR Example Image](swr-example.png)
+
+Notice that user information is used both in the navbar as well as the title
+
+Usually, we would need to have a root App component that fetches the user data in a `useEffect` hook, and then saves it in a state variable:
+
+```jsx
+function Page () {
+  const [user, setUser] = useState(null)
+
+  // fetch data
+  useEffect(() => {
+    fetch('/api/user')
+      .then(res => res.json())
+      .then(data => setUser(data))
+  }, [])
+
+	...
+}
+```
+
+Then, it will have to pass this state down to all child components. We could use **ContextAPI** to pass down state to child components without this prop drilling. However, note that ContextAPI causes unnecessary re-renders if the state object and the component tree are large. For example, if the state object has 10 properties, and various components in the tree are accessing various properties, and then if one of those 10 properties changes, the entire tree will re-render. Not only will the components that are consuming that particular changed property re-render, but so will all the other components that were consuming the context in any way. So the ideal use-case for ContextAPI is when the state object does not have many properties, and the component tree is also simple.
+
+Passing down props without ContextAPI looks like this: (See highlighted code below)
+
+```jsx {hl_lines="11-17"}
+function Page () {
+  const [user, setUser] = useState(null)
+
+  // fetch data
+  useEffect(() => {
+    fetch('/api/user')
+      .then(res => res.json())
+      .then(data => setUser(data))
+  }, [])
+
+  // global loading state
+  if (!user) return <Spinner />
+
+  return <div>
+    <Navbar **user={user}** />
+    <Content **user={user}** />
+  </div>
+}
+```
+
+And the child components will have to catch the state and use it:
+
+```jsx {hl_lines="3 7 14 18"}
+// child components
+
+function Navbar({ user }) {
+  return (
+    <div>
+      ...
+      <Avatar user={user} />
+    </div>
+  );
+}
+// Note how the above Navbar component has to
+// catch and pass `user` even though it doesn't need it
+
+function Content({ user }) {
+  return <h1>Welcome back, {user.name}</h1>;
+}
+
+function Avatar({ user }) {
+  return <img src={user.avatar} alt={user.name} />;
+}
+```
+
+## With SWR
+
+Now let’s take a look at what would happen if we used `SWR`.
+
+We would fetch the data using `SWR`:
+
+```jsx
+const { data, error, isLoading } = useSWR("/api/user/123", fetcher);
+```
+
+We could turn this into our own custom hook that can be reused:
+
+```jsx
+function useUser(id) {
+  const { data, error, isLoading } = useSWR(`/api/user/${id}`, fetcher);
+
+  return {
+    user: data,
+    isLoading,
+    isError: error,
+  };
+}
+```
+
+Now using this `useUser` hook, we can rewrite the `Page` component like this:
+
+```jsx
+function Page() {
+  return (
+    <div>
+      <Navbar />
+      <Content />
+    </div>
+  );
+}
+```
+
+Notice no top-level state required. `useUser` is called by only the components that actually need that data.
+
+The child components that need user data call the `useUser` hook:
+
+```jsx {hl_lines="11 14 20 25"}
+// child components
+
+function Navbar() {
+  return (
+    <div>
+      ...
+      <Avatar />
+    </div>
+  );
+}
+// Note that <Navbar> component doesn’t need to receive and pass down props.
+
+function Content() {
+  const { user, isLoading } = useUser();
+  if (isLoading) return <Spinner />;
+  return <h1>Welcome back, {user.name}</h1>;
+}
+
+function Avatar() {
+  const { user, isLoading } = useUser();
+  if (isLoading) return <Spinner />;
+  return <img src={user.avatar} alt={user.name} />;
+}
+
+// Note that <Content> and <Avatar> components get user data when they need it.
+```
+
+**The best part is that even though multiple components are calling `useUser()`, only one network request will be sent to the server. `SWR` handles this internally by caching.**
+
+**Also note that we no longer need any state variables, and therefore no state management.**
+
+# Jotai [🔗](https://jotai.org/)
+
+Let’s say we have some local state that we don’t get from or send to a server and we want every component to be able to access it. This is not the use case for SWR. Once again, if the state object is not large and the tree is simple, you can use ContextAPI. In the else case, you can use `Jotai`, a much simpler solution than Redux.
+
+In `jotai` we create pieces of state called Atoms. Think about that large state object with 10 properties. You could turn each property into its own atom.
+Let’s create two atoms: `count` and `country`.
+
+```jsx
+import { atom } from "jotai";
+
+const countAtom = atom(0);
+const countryAtom = atom("Japan");
+```
+
+These atoms are now accessible by all components in the application from anywhere in the app:
+
+```jsx {hl_lines="4"}
+import { useAtom } from "jotai";
+
+const Counter = () => {
+  const [count, setCount] = useAtom(countAtom);
+
+  return (
+    <p>
+      {count}
+      <a onClick={setCount((cur) => cur + 1)}>Increment</a>
+    </p>
+  );
+};
+```
+
+Other components may use other atoms like `country`.
+
+### Important Note
+
+If the value of one atom changes, only the components that consume that specific atom are re-rendered, not the others.
+This is `jotai`’s advantage over `ContextAPI`.
+
+# Redux
+
+For more complex applications that require **complex state machines**, we use solutions like **zustand** and **redux**.
+
+Redux complicates applications, and that is no secret. Read tweets from Dan Abramov, the creator of Redux:
+
+https://twitter.com/dan_abramov/status/1191487232038883332
+https://twitter.com/dan_abramov/status/1191516686463242242
+
+This complexity can pay off if you’re managing very complex state machines and need Redux’s browser devtools and management. But for many applications, it is overkill and not worth the added complexity.

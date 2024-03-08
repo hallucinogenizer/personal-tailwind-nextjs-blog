@@ -1,0 +1,149 @@
+---
+title: "Typescript-like Types in Python 3"
+summary: "`def sum(x: int, y: int) -> int`"
+date: 2023-02-14T13:40:59+05:00
+featured_image: "/images/typescript-python.jpeg"
+draft: false
+---
+
+*As a reference, you can use [this site](https://typing.readthedocs.io/en/latest/).*
+
+The need for types is strongly felt when calling functions. You need to know the exact **types of the arguments** of a function when calling it, otherwise the function may not work. For example, the sum function:
+```python
+def sum(x, y):
+    return x + y
+```
+To give an `integer` type to its arguments, you can use a typescript-like syntax:
+```python
+def sum(x: int, y: int):
+    return x + y
+```
+You can also give the function's return value a type using an arrow `->`:
+```python
+def sum(x: int, y: int) -> int:
+    return x + y
+```
+Note that Python will **not** throw a runtime error if one of these type checks fails.
+
+# VS Code Configuration
+VS Code, by default, may not show you any error flags if you violate one of these type checks. To enable those error flags, go to VS Code settings (JSON) and set the following flag:
+```json
+  "python.analysis.typeCheckingMode": "basic",
+```
+Its value is usually `"off"` by default. 
+
+# Other Types
+You can use any of the [built-in types](https://docs.python.org/3/library/stdtypes.html) of Python, such as:
+- `int`
+- `float`
+- `str`
+- `list`
+- `tuple`
+- `dict`: For a dictionary:  
+    ```python
+        def print_dictionary(my_dict: dict):
+            for key, value in my_dict.items():
+                print (key, value)
+    ```
+# Dictionaries
+You can also use `typing.Dict` which is more generic and lets you specify the types of the dictionary's keys and values as well. [StackOverflow](https://stackoverflow.com/questions/37087457/difference-between-defining-typing-dict-and-dict). However, as of Python 3.9, you should use `dict` as `typing.Dict` is deprecated.  
+
+Say our dictionary has string keys and integer values:
+```python {hl_lines="3"}
+    from typing import Dict
+
+    def print_dictionary(my_dict: Dict[str, int]):
+        for key, value in my_dict.items():
+            print (key, value)
+```
+As of Python 3.9, the following will also work:
+```python {hl_lines="1"}
+    def print_dictionary(my_dict: dict[str, int]):
+        for key, value in my_dict.items():
+            print (key, value)
+```
+
+## Typed Dictionaries
+What if you want to specify the exact keys that a dictionary will have? For this, we have `typing.TypedDict`. [Reference](https://peps.python.org/pep-0589/).  
+You can use `TypedDict` with a class-based syntax or a functional syntax.
+
+### Class-based Syntax
+To define a new dictionary type `Movie` that always contains keys `name` and `year`:
+```python {hl_Lines="3-5 7"}
+from typing import TypedDict
+
+class Movie(TypedDict):
+    name: str
+    year: int
+
+def announce_movie(movie: Movie):
+    print("Movie",movie['name'],"was made in year", movie["year"])
+
+announce_movie({'name': "Interstellar", 'year': 2014})
+```
+If you have [configured VS Code properly](#vscode-config), trying to access any other key on the `movie` dictionary will show you a red flag. Also note that in the above type declaration, both keys `name` and `year` are required.
+
+### Function Syntax
+```python {hl_Lines="3"}
+from typing import TypedDict
+
+Movie = TypedDict('Movie', {'name': str, 'year': int})
+
+def announce_movie(movie: Movie):
+    print("Movie",movie['name'],"was released in year", movie["year"])
+
+announce_movie({'name': "Interstellar", 'year': 2014})
+```
+### Optional Keys
+The following examples work in Python 3.9.  
+You can pass a third `total=False` argument to the functional `TypedDict()` call which makes all keys of the dictionary optional by default.
+
+Note that if you used the old `announce_movie()` function despite the optional keys, you will see a type error:
+```python {hl_lines="5", linenos=true}
+from typing import TypedDict
+
+Movie = TypedDict('Movie', 
+                    {'name': str, 'year': int},
+                        total=False)
+
+def announce_movie(movie: Movie):
+    print("Movie",movie['name'], 
+                    "was released in year", movie["year"])
+
+announce_movie({'name': "Interstellar"})
+```
+Your IDE would show you a type error on lines 8-9, saying that it is not guaranteed that the `movie` dictionary will contain keys `name` and `year`.  
+To avoid that error:
+```python {hl_lines="8-11"}
+from typing import TypedDict
+
+Movie = TypedDict('Movie', 
+                    {'name': str, 'year': int},
+                        total=False)
+
+def announce_movie(movie: Movie):
+    if 'name' in movie:
+        print("Movie name is", movie['name'])
+    if 'year' in movie:
+        print("It was released in", movie["year"])
+
+announce_movie({'name': "Interstellar"})
+```
+
+You could also set some keys in the dictionary as required, for example, the `name`:
+```python {hl_lines="2 5"}
+from typing import TypedDict
+from typing_extensions import Required
+
+Movie = TypedDict('Movie', 
+                    {'name': Required[str], 'year': int},
+                        total=False)
+
+def announce_movie(movie: Movie):
+    print("Movie", movie['name'], end='')
+    if 'year' in movie:
+        print("was released in", movie["year"])
+
+announce_movie({'name': "Interstellar"})
+```
+This was one approach: declare all keys as optional by default and then set some as required. If the majority of the keys in your dictionary are required, then you can do the inverse. Let all keys be required by default (by removing the `total=False` argument to `TypedDict`), and make some optional by using `typing_extensions.NotRequired`.
