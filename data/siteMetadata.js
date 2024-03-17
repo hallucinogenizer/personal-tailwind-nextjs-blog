@@ -8,8 +8,8 @@ const siteMetadata = {
   theme: 'system', // system, dark or light
   siteUrl: 'https://rohanhussain.com/blog',
   siteRepo: 'https://github.com/hallucinogenizer/personal-tailwind-nextjs-blog.git',
-  siteLogo: '/static/images/avatar.jpg',
-  socialBanner: '/static/images/avatar.jpg',
+  siteLogo: '/blog/static/images/avatar.jpg',
+  socialBanner: '/blog/static/images/avatar.jpg',
   email: 'contact@rohanhussain.com',
   github: 'https://github.com/hallucinogenizer',
   facebook: 'https://facebook.com/hallucinogenizer',
