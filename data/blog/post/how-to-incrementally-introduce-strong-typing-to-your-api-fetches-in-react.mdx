@@ -1,0 +1,277 @@
+---
+title: "How to incrementally add TypeScript response-types to your React API data fetching"
+summary: "This will help reduce frontend-backend incompatibilities. We will explore the Orval project in this blog post"
+date: 2022-10-08T11:35:18+05:00
+draft: true
+---
+
+# What You Need
+- A React Application that fetches data from a backend REST API. 
+- A codebase that supports TypeScript. It doesn't matter if it's currently using `any` and `unknown` everywhere currently.
+- It almost doesn't matter how you fetch the data, be it using `fetch()`, or React Query or SWR. This works for them all.
+
+
+**Q:** Will I need to rewrite a lot of code to start doing this?
+**A:** No, you can adopt this incrementally starting from the next API endpoint you write/use.
+
+# Steps
+## Step 1: Learn OpenAPI
+You need to learn the basics of how to write an OpenAPI spec file. It's ok if you haven't heard of OpenAPI spec files before. If you haven't, read the next heading. If you have, skip the next heading.
+### What are OpenAPI spec files?
+OpenAPI spec files are like blueprints for APIs, written in a way that both humans and computers can understand. They describe how an API works, including what requests you can make, what data you need to send in requests, and what responses you can expect. This makes it easier for developers to build and use APIs consistently and correctly.
+
+Basically, it's documentation for your API. You can write OpenAPI spec in JSON or YAML whichever you prefer. I've seen most people write it in YAML, but personally I prefer JSON.
+
+## Step 2: Write an empty OpenAPI spec
+Start by creating a simple empty OpenAPI spec file:
+```json
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Sample API",
+    "description": "A simple API example with no endpoints.",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "https://api.example.com",
+      "description": "Main (production) server"
+    },
+    {
+      "url": "https://staging-api.example.com",
+      "description": "Staging server"
+    }
+  ]
+}
+```
+
+In `servers`, you need to mention the backend servers that your frontend sends requests to. We are using OpenAPI specification v3.0.0 to write this file. Newer versions are available.
+
+## Step 3: Add your first endpoint to the spec file
+We will add a `paths` properti which will contain our endoints. Let's create an endpoint that has URL: `/sample-endpoint`.
+
+
+```json
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Sample API",
+    "description": "A simple API example with a basic GET endpoint.",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "https://api.example.com",
+      "description": "Main (production) server"
+    },
+    {
+      "url": "https://staging-api.example.com",
+      "description": "Staging server"
+    }
+  ],
+  "paths": {
+    "/sample-endpoint": {}
+  }
+}
+```
+
+This will be a GET request.
+
+```json
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Sample API",
+    "description": "A simple API example with a basic GET endpoint.",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "https://api.example.com",
+      "description": "Main (production) server"
+    },
+    {
+      "url": "https://staging-api.example.com",
+      "description": "Staging server"
+    }
+  ],
+  "paths": {
+    "/sample-endpoint": {
+      "get": {
+        "summary": "Get a sample object",
+        "responses": {}
+      }
+    }
+  }
+}
+
+```
+
+The responses are empty. You can define a `200` status code response, and others like `400`, `500`, etc. For now let's define a `200` successful response:
+
+
+```json
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Sample API",
+    "description": "A simple API example with a basic GET endpoint.",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "https://api.example.com",
+      "description": "Main (production) server"
+    },
+    {
+      "url": "https://staging-api.example.com",
+      "description": "Staging server"
+    }
+  ],
+  "paths": {
+    "/sample-endpoint": {
+      "get": {
+        "summary": "Get a sample object",
+        "responses": {
+          "200": {
+            "description": "A simple object response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+```
+
+In the `schema` goes the schema of our response object. Say our response object looks like this:
+```json
+{
+    "id": 1,
+    "name": "Rohan",
+    "active": true
+}
+```
+
+We describe this response in the OpenAPI spec:
+
+```json
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Sample API",
+    "description": "A simple API example with a basic GET endpoint.",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "https://api.example.com",
+      "description": "Main (production) server"
+    },
+    {
+      "url": "https://staging-api.example.com",
+      "description": "Staging server"
+    }
+  ],
+  "paths": {
+    "/sample-endpoint": {
+      "get": {
+        "summary": "Get a sample object",
+        "responses": {
+          "200": {
+            "description": "A simple object response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "integer",
+                      "example": 1
+                    },
+                    "name": {
+                      "type": "string",
+                      "example": "Sample Name"
+                    },
+                    "active": {
+                      "type": "boolean",
+                      "example": true
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+```
+
+You can also give an example in the spec for better readability:
+```json
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Sample API",
+    "description": "A simple API example with a basic GET endpoint.",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "https://api.example.com",
+      "description": "Main (production) server"
+    },
+    {
+      "url": "https://staging-api.example.com",
+      "description": "Staging server"
+    }
+  ],
+  "paths": {
+    "/sample": {
+      "get": {
+        "summary": "Get a sample object",
+        "responses": {
+          "200": {
+            "description": "A simple object response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "integer",
+                      "example": 1
+                    },
+                    "name": {
+                      "type": "string",
+                      "example": "Sample Name"
+                    },
+                    "active": {
+                      "type": "boolean",
+                      "example": true
+                    }
+                  },
+                  "example": {
+                    "id": 1,
+                    "name": "Sample Name",
+                    "active": true
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+```
