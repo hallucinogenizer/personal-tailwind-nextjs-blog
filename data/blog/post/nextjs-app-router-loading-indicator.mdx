@@ -1,17 +1,27 @@
 ---
-title: "How to show a Loading Indicator on route change in NextJS 13/14 App Router"
+title: 'How to show a Loading Indicator on route change in NextJS 13/14 App Router'
 date: 2024-03-17T14:56:02+05:00
 summary: "Once you've followed this guide, when a user clicks a button or link that initiates a route change, an NProgress loading indicator will show up instantaneously on the top of the viewport just under the address bar."
+tags:
+  - NextJS
+  - App Router
+  - Loading Indicator
+  - NProgress
+  - UX
+  - React
 draft: false
 ---
+
 Once you've followed this guide, when a user clicks a button or link that initiates a route change, an `NProgress` loading indicator will show up instantaneously on the top of the viewport just under the address bar.
 
 # Expected Result
+
 You'll see a snake-like loading indicator under the browser address bar, similar to the one on educative.io:
 ![Educative Loading Indicator](/blog/static/images/educative-loading-indicator.png)
 You'll be able to style it as per your theme.
 
 # Install `npm` backage
+
 We will use the [`nextjs-toploader`](https://www.npmjs.com/package/nextjs-toploader) npm package which is fairly popular. As of this moment, it has 46k weekly downloads.
 
 ```bash
@@ -29,6 +39,7 @@ bun install nextjs-toploader
 ```
 
 # Add `NextTopLoader` to your root `layout.tsx`
+
 Go to your `/app/layout.tsx` or `/src/app/layout.tsx` and add the following to your root layout component's returned JSX:
 
 ```typescript
@@ -47,11 +58,13 @@ export default function RootLayout() {
     );
 }
 ```
-Note that you do *NOT* need to turn your root layout into a client component with `use client` to make this work. This works with server components as well.
+
+Note that you do _NOT_ need to turn your root layout into a client component with `use client` to make this work. This works with server components as well.
 
 That's it. You're done.
 
 ## How to customize styling
+
 As per the library's current `npm` page, the following are the default values of the props that this component takes:
 
 ```typescript
@@ -73,7 +86,7 @@ export default function RootLayout() {
                 easing="ease"
                 speed={200}
                 shadow="0 0 10px #2299DD,0 0 5px #2299DD"
-                template='<div class="bar" role="bar"><div class="peg"></div></div> 
+                template='<div class="bar" role="bar"><div class="peg"></div></div>
                 <div class="spinner" role="spinner"><div class="spinner-icon"></div></div>'
                 zIndex={1600}
                 showAtBottom={false}
@@ -82,9 +95,11 @@ export default function RootLayout() {
     );
 }
 ```
+
 `showSpinner` is `true` by default and shows a loading spinner on the top right corner of the screen while loading is in progress.
 
 You can override any of these selectively, for example:
+
 ```typescript
 import NextTopLoader from "nextjs-toploader";
 

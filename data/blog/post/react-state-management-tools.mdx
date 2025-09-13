@@ -1,8 +1,17 @@
 ---
-title: "State Management Tools in React"
+title: 'State Management Tools in React'
 date: 2023-05-08T14:56:02+05:00
-summary: "ContextAPI, Redux, Jotai, what to use?"
-images: ["/blog/static/images/react-state-management.png"]
+summary: 'ContextAPI, Redux, Jotai, what to use?'
+images: ['/blog/static/images/react-state-management.png']
+tags:
+  - React
+  - State Management
+  - Redux
+  - ContextAPI
+  - Jotai
+  - Zustand
+  - SWR
+  - React Query
 draft: false
 ---
 
@@ -79,17 +88,17 @@ function Navbar({ user }) {
       ...
       <Avatar user={user} />
     </div>
-  );
+  )
 }
 // Note how the above Navbar component has to
 // catch and pass `user` even though it doesn't need it
 
 function Content({ user }) {
-  return <h1>Welcome back, {user.name}</h1>;
+  return <h1>Welcome back, {user.name}</h1>
 }
 
 function Avatar({ user }) {
-  return <img src={user.avatar} alt={user.name} />;
+  return <img src={user.avatar} alt={user.name} />
 }
 ```
 
@@ -100,20 +109,20 @@ Now let’s take a look at what would happen if we used `SWR`.
 We would fetch the data using `SWR`:
 
 ```jsx
-const { data, error, isLoading } = useSWR("/api/user/123", fetcher);
+const { data, error, isLoading } = useSWR('/api/user/123', fetcher)
 ```
 
 We could turn this into our own custom hook that can be reused:
 
 ```jsx
 function useUser(id) {
-  const { data, error, isLoading } = useSWR(`/api/user/${id}`, fetcher);
+  const { data, error, isLoading } = useSWR(`/api/user/${id}`, fetcher)
 
   return {
     user: data,
     isLoading,
     isError: error,
-  };
+  }
 }
 ```
 
@@ -126,7 +135,7 @@ function Page() {
       <Navbar />
       <Content />
     </div>
-  );
+  )
 }
 ```
 
@@ -143,20 +152,20 @@ function Navbar() {
       ...
       <Avatar />
     </div>
-  );
+  )
 }
 // Note that <Navbar> component doesn’t need to receive and pass down props.
 
 function Content() {
-  const { user, isLoading } = useUser();
-  if (isLoading) return <Spinner />;
-  return <h1>Welcome back, {user.name}</h1>;
+  const { user, isLoading } = useUser()
+  if (isLoading) return <Spinner />
+  return <h1>Welcome back, {user.name}</h1>
 }
 
 function Avatar() {
-  const { user, isLoading } = useUser();
-  if (isLoading) return <Spinner />;
-  return <img src={user.avatar} alt={user.name} />;
+  const { user, isLoading } = useUser()
+  if (isLoading) return <Spinner />
+  return <img src={user.avatar} alt={user.name} />
 }
 
 // Note that <Content> and <Avatar> components get user data when they need it.
@@ -174,27 +183,27 @@ In `jotai` we create pieces of state called Atoms. Think about that large state 
 Let’s create two atoms: `count` and `country`.
 
 ```jsx
-import { atom } from "jotai";
+import { atom } from 'jotai'
 
-const countAtom = atom(0);
-const countryAtom = atom("Japan");
+const countAtom = atom(0)
+const countryAtom = atom('Japan')
 ```
 
 These atoms are now accessible by all components in the application from anywhere in the app:
 
 ```jsx {hl_lines="4"}
-import { useAtom } from "jotai";
+import { useAtom } from 'jotai'
 
 const Counter = () => {
-  const [count, setCount] = useAtom(countAtom);
+  const [count, setCount] = useAtom(countAtom)
 
   return (
     <p>
       {count}
       <a onClick={setCount((cur) => cur + 1)}>Increment</a>
     </p>
-  );
-};
+  )
+}
 ```
 
 Other components may use other atoms like `country`.
