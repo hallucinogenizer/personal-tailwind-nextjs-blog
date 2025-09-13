@@ -1,1 +1,24 @@
-{}
+{
+  "nextjs": 3,
+  "react": 4,
+  "lcp": 1,
+  "performance": 1,
+  "app-router": 2,
+  "web-vitals-and-optimization": 1,
+  "typescript": 1,
+  "api": 1,
+  "strong-typing": 1,
+  "openapi": 1,
+  "orval": 1,
+  "frontend": 1,
+  "backend": 1,
+  "javascript": 1,
+  "functional-programming": 1,
+  "state-management": 1,
+  "contextapi": 1,
+  "expressjs": 1,
+  "supertokens": 1,
+  "authentication": 1,
+  "fullstack": 1,
+  "python": 1
+}
