@@ -1,0 +1,469 @@
+---
+title: 'How to Decrease the Number of useState() and useEffect() calls in your React Codebase by a lot'
+summary: 'This article delves into derived state and how to avoid creating new state variables and effects to manage derived state.'
+tags:
+  ['NextJS', 'React', 'App Router', 'useState', 'useEffect', 'Remix', 'Optimization', 'Clean Code']
+date: 2025-10-16T16:13:00+05:00
+draft: false
+---
+
+# The Problem
+
+Right off the bat, take the following hook as an example. I found this in a codebase I was working on. Try to spend a minute or two and see if you can understand what it does.
+
+```tsx
+/**
+ * Custom hook to determine if current user country is in a restricted list.
+ * Returns the matched restricted country if user is in one; otherwise returns null.
+ *
+ * @param restrictedCountries - Array of countries to be checked against user's country
+ * @returns {Country | null} - The restricted country if match found, else null
+ */
+const useGetCurrentUserCountryAndSeeIfItIsRestricted = (
+  restrictedCountries: Country[] | null
+): Country | null => {
+  const [restrictedCountry, setRestrictedCountry] = useState<Country | null>(null)
+
+  const { userLocationData } = useUserLocation()
+
+  useEffect(() => {
+    if (!userLocationData) {
+      return
+    }
+
+    const checkCountryRestriction = () => {
+      try {
+        const userCountryIso = userLocationData?.country_code?.toLowerCase()
+
+        if (
+          userCountryIso &&
+          restrictedCountries?.some((country) => country.Iso?.toLowerCase() === userCountryIso)
+        ) {
+          const matchedCountry = restrictedCountries.find(
+            (country) => country.Iso?.toLowerCase() === userCountryIso
+          )
+          setRestrictedCountry(matchedCountry || null)
+        }
+      } catch (error) {
+        // eslint-disable-next-line no-console
+        console.error('Failed to fetch user country:', error)
+      }
+    }
+
+    checkCountryRestriction()
+  }, [userLocationData, restrictedCountries])
+
+  return restrictedCountry
+}
+```
+
+In short, as the JSDoc says, this hook is used to determine if the current user's country is in a restricted list. If it is, it returns the restricted country. Otherwise, it returns `null`.
+The cool thing? I can refactor the code inside this hook down from 32 lines of code to 2 lines of code. That's what this article is about.
+
+# Let's Talk Principle
+
+I'll come back to refactoring the above hook in a moment. But first, let's talk about the principle that will guide that refactoring.
+
+Let's talk about a series of programming tasks I often ask candidates to do in React interviews:
+
+## Task 1
+
+> You are given an empty React component that simply renders `<p>Hello World</p>`.
+> Write code that fetches a list of users from an API and displays them in a list. (You can write a dummy API endpoint that returns a list of users in JSON format.)
+
+The first thing candidates do is they write code to fetch the users from the API and store them in a state variable.
+
+```tsx
+const MyComponent = () => {
+  const [users, setUsers] = useState<User[]>([])
+
+  useEffect(() => {
+    fetchDemoUsers().then(setUsers)
+  }, [])
+
+  return (
+    <ul>
+      {users.map((user) => (
+        <li key={user.id}>{user.name}</li>
+      ))}
+    </ul>
+  )
+}
+```
+
+This is a valid solution. It fetches the users from the API and stores them in a state variable. It then renders the users in a list. So far so good.
+
+## Task 2
+
+> Now implement a search input that filters the users list based on the search query.
+
+The first thing candidates do is they write code to add a search input to the component.
+
+```tsx
+const MyComponent = () => {
+  const [users, setUsers] = useState<User[]>([])
+
+  useEffect(() => {
+    fetchDemoUsers().then(setUsers)
+  }, [])
+
+  return (
+    <div>
+      <input type="text" placeholder="Search users" />
+      <ul>
+        {users.map((user) => (
+          <li key={user.id}>{user.name}</li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+```
+
+Then they create a state variable to store the search query.
+
+```tsx
+const MyComponent = () => {
+  const [users, setUsers] = useState<User[]>([])
+  const [searchQuery, setSearchQuery] = useState('')
+
+  useEffect(() => {
+    fetchDemoUsers().then(setUsers)
+  }, [])
+
+  return (
+    <div>
+      <input type="text" placeholder="Search users" />
+      <ul>
+        {users.map((user) => (
+          <li key={user.id}>{user.name}</li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+```
+
+Then to filter the users list, they write a useEffect hook that filters the users list based on the search query.
+
+```tsx
+const MyComponent = () => {
+  const [users, setUsers] = useState<User[]>([])
+  const [searchQuery, setSearchQuery] = useState('')
+
+  useEffect(() => {
+    fetchDemoUsers().then(setUsers)
+  }, [])
+
+  useEffect(() => {
+    const filteredUsers = users.filter((user) =>
+      user.name.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+    setUsers(filteredUsers)
+  }, [searchQuery])
+
+  return (
+    <div>
+      <input type="text" placeholder="Search users" />
+      <ul>
+        {users.map((user) => (
+          <li key={user.id}>{user.name}</li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+```
+
+### Bug
+
+This does just as much as asked, but causes a bug. When you type something in the search input, the list indeed gets filtered, but then when you clear the search input, the original list does not get restored.
+Take a moment to think about why this is happening.
+
+Here's why:
+
+- When the search query changes, the useEffect hook is triggered.
+- The useEffect computes the filtered users list.
+- The useEffect updates the users state variable with the filtered users list.
+- This means that the original list of all users is lost. `users` now contains the filtered users list. Meaning there is no way to retrieve the old complete unfiltered list of users.
+
+### Candidate's Solution to This
+
+Candidates often try to fix this by creating a new state variable so as not to edit/override the original list of users.
+
+```tsx
+const MyComponent = () => {
+  const [users, setUsers] = useState<User[]>([])
+  const [searchQuery, setSearchQuery] = useState('')
+  const [filteredUsers, setFilteredUsers] = useState<User[]>([]) // this is the new state variable that will store the filtered users list
+
+  // ...continued
+}
+```
+
+Then
+
+1. in the useEffect hook that fetches the data, they set the filtered users list to the original list of users in the beginning.
+2. they write a new useEffect hook that filters the users list based on the search query and updates the filtered users list state variable.
+3. in the render statement, they render the filtered users list.
+
+```tsx
+const MyComponent = () => {
+  const [users, setUsers] = useState<User[]>([])
+  const [searchQuery, setSearchQuery] = useState('')
+  const [filteredUsers, setFilteredUsers] = useState<User[]>([])
+
+  useEffect(() => {
+    fetchDemoUsers().then((data) => {
+      setUsers(data)
+      setFilteredUsers(data) // 1. added
+    })
+  }, [])
+
+  useEffect(() => {
+    setFilteredUsers(
+      users.filter((user) => user.name.toLowerCase().includes(searchQuery.toLowerCase()))
+    ) // 2. added
+  }, [searchQuery])
+
+  return (
+    <div>
+      <input type="text" placeholder="Search users" />
+      <ul>
+        {filteredUsers.map(
+          (
+            user // 3. added
+          ) => (
+            <li key={user.id}>{user.name}</li>
+          )
+        )}
+      </ul>
+    </div>
+  )
+}
+```
+
+This is a valid solution. It fetches the users from the API and stores them in a state variable. It then filters the users list based on the search query and stores the filtered users list in a new state variable. It then renders the filtered users list. So far so good.
+
+## Task 3
+
+I tell the candidate at this point that they have done well, but this code is not optimal in several ways:
+
+1. It takes one extra render to display the filtered users list than necessary.
+2. It has 3 state variables when we only need 2.
+3. It has 2 useEffect hooks when we only need one.
+
+I then ask the candidate to refactor the code to remove the extra state variable and the extra useEffect hook
+
+Let's do it ourselves:
+
+### Step 1
+
+Let's remove the `filteredUsers` state variable as well as the useEffect hook that filters the users list based on the search query.
+
+```tsx
+const MyComponent = () => {
+  const [users, setUsers] = useState<User[]>([])
+  const [searchQuery, setSearchQuery] = useState('')
+
+  useEffect(() => {
+    fetchDemoUsers().then((data) => {
+      setUsers(data)
+    })
+  }, [])
+
+  return (
+    <div>
+      <input type="text" placeholder="Search users" />
+      <ul>
+        {filteredUsers.map(
+          (
+            user // 3. added
+          ) => (
+            <li key={user.id}>{user.name}</li>
+          )
+        )}
+      </ul>
+    </div>
+  )
+}
+```
+
+But where do we get `filteredUsers` from?
+
+### Step 2
+
+Let's **derive** the filtered users list from users:
+
+```tsx
+const MyComponent = () => {
+  const [users, setUsers] = useState<User[]>([])
+  const [searchQuery, setSearchQuery] = useState('')
+
+  useEffect(() => {
+    fetchDemoUsers().then((data) => {
+      setUsers(data)
+    })
+  }, [])
+
+  const filteredUsers = users.filter((user) =>
+    user.name.toLowerCase().includes(searchQuery.toLowerCase())
+  ) // as simple as that!
+
+  return (
+    <div>
+      <input type="text" placeholder="Search users" />
+      <ul>
+        {filteredUsers.map(
+          (
+            user // 3. added
+          ) => (
+            <li key={user.id}>{user.name}</li>
+          )
+        )}
+      </ul>
+    </div>
+  )
+}
+```
+
+This is the optimal solution:
+
+1. It has only two state variables.
+2. It has only one useEffect hook.
+3. It takes one less render to display the filtered users list than the previous solution. (Think about it!)
+
+### Optimization
+Someone may object that this may cause unnecessary reruns of the potentially expensive `.filter()` operation because it will run on every single re-render. To that I say 2 things:
+1. If we are strictly talking about the code above, then this is not a problem. The `.filter()` operation **should** run on every re-render, because a re-render only happens in one of two cases:
+     i. The `users` state variable changes.
+     ii. The `searchQuery` state variable changes.
+
+    In both cases, the `.filter()` operation should run again and `filteredUsers` should be recomputed.
+
+2. If we are talking about a different case where the component has a third way of re-rendering which shouldn't cause `.filter()` to re-run, then we can simply memoize the `.filter()` operation with `useMemo()`.
+
+## Lesson/Principle Learned
+
+The lesson learned here is that if you have a variable (in this case `filteredUsers`) whose value is derived from one or more state variables, then `filteredUsers` itself should not be a state variable. It should be a regular variable.
+Following this principle reduces one `useState` call and one `useEffect` call, and reduces one extra render.
+
+# Back to the Original Problem
+
+Now let's refactor the original hook to follow the principle we just learned.
+
+Let's take a look at the original hook:
+
+```tsx
+/**
+ * Custom hook to determine if current user country is in a restricted list.
+ * Returns the matched restricted country if user is in one; otherwise returns null.
+ *
+ * @param restrictedCountries - Array of countries to be checked against user's country
+ * @returns {Country | null} - The restricted country if match found, else null
+ */
+const useGetCurrentUserCountryAndSeeIfItIsRestricted = (
+  restrictedCountries: Country[] | null
+): Country | null => {
+  const [restrictedCountry, setRestrictedCountry] = useState<Country | null>(null)
+
+  const { userLocationData } = useUserLocation()
+
+  useEffect(() => {
+    if (!userLocationData) {
+      return
+    }
+
+    const checkCountryRestriction = () => {
+      try {
+        const userCountryIso = userLocationData?.country_code?.toLowerCase()
+
+        if (
+          userCountryIso &&
+          restrictedCountries?.some((country) => country.Iso?.toLowerCase() === userCountryIso)
+        ) {
+          const matchedCountry = restrictedCountries.find(
+            (country) => country.Iso?.toLowerCase() === userCountryIso
+          )
+          setRestrictedCountry(matchedCountry || null)
+        }
+      } catch (error) {
+        // eslint-disable-next-line no-console
+        console.error('Failed to fetch user country:', error)
+      }
+    }
+
+    checkCountryRestriction()
+  }, [userLocationData, restrictedCountries])
+
+  return restrictedCountry
+}
+```
+
+Here, the derived state is `restrictedCountry`. So, as per our learned principle, `restrictedCountry` should not be a state variable. It should be a regular variable. Let's remove the state variable as well as the `useEffect` hook that sets the `restrictedCountry` state variable.
+
+```tsx
+/**
+ * Custom hook to determine if current user country is in a restricted list.
+ * Returns the matched restricted country if user is in one; otherwise returns null.
+ *
+ * @param restrictedCountries - Array of countries to be checked against user's country
+ * @returns {Country | null} - The restricted country if match found, else null
+ */
+const useGetCurrentUserCountryAndSeeIfItIsRestricted = (
+  restrictedCountries: Country[] | null
+): Country | null => {
+  const { userLocationData } = useUserLocation()
+
+  return restrictedCountry
+}
+```
+
+But how do we get the restricted country? We derive it:
+
+```tsx
+/**
+ * Custom hook to determine if current user country is in a restricted list.
+ * Returns the matched restricted country if user is in one; otherwise returns null.
+ *
+ * @param restrictedCountries - Array of countries to be checked against user's country
+ * @returns {Country | null} - The restricted country if match found, else null
+ */
+const useGetCurrentUserCountryAndSeeIfItIsRestricted = (
+  restrictedCountries: Country[] | null
+): Country | null => {
+  const { userLocationData } = useUserLocation()
+  const userCountryIso = userLocationData?.country_code?.toLowerCase()
+
+  const restrictedCountry =
+    restrictedCountries?.find((country) => country.Iso?.toLowerCase() === userCountryIso) | null
+
+  return restrictedCountry
+}
+```
+
+Now I promised you I could reduce the component body to 2 lines of code. Let's do it:
+```tsx
+/**
+ * Custom hook to determine if current user country is in a restricted list.
+ * Returns the matched restricted country if user is in one; otherwise returns null.
+ *
+ * @param restrictedCountries - Array of countries to be checked against user's country
+ * @returns {Country | null} - The restricted country if match found, else null
+ */
+const useGetCurrentUserCountryAndSeeIfItIsRestricted = (
+  restrictedCountries: Country[] | null
+): Country | null => {
+  const { userLocationData } = useUserLocation()
+  return restrictedCountries?.find((country) => country.Iso?.toLowerCase() === userLocationData?.country_code?.toLowerCase()) | null
+}
+```
+
+That's it! We have reduced the component body down from 32 lines of code to 2 lines of code.
+
+# Conclusion
+
+This article has shown you how to reduce the number of `useState` and `useEffect` calls in your React codebase by a lot.
+
+The principle we learned is that if you have a variable whose value is derived from one or more state variables, then the former state variable itself should **not** be a state variable. It should be a regular variable.
+Following this principle reduces one `useState` call and one `useEffect` call, and reduces one extra render.
