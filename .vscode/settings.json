@@ -4,5 +4,6 @@
   "editor.quickSuggestions": {
     "other": "off"
   },
-  "editor.formatOnSave": true
+  "editor.formatOnSave": true,
+  "cSpell.words": ["Veritasium"]
 }
