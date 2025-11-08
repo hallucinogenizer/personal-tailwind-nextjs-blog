@@ -5,7 +5,7 @@ interface YouTubeProps {
   title?: string
 }
 
-export default function VeritasiumTheExpertMythYouTubeVideo({
+export default function SamAltmanBurnoutYouTubeVideo({
   id,
   title = 'YouTube video player',
 }: YouTubeProps) {
@@ -24,3 +24,4 @@ export default function VeritasiumTheExpertMythYouTubeVideo({
     </div>
   )
 }
+

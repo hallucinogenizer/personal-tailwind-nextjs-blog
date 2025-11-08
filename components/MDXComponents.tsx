@@ -5,7 +5,8 @@ import type { MDXComponents } from 'mdx/types'
 import Image from './Image'
 import CustomLink from './Link'
 import TableWrapper from './TableWrapper'
-import VeritasiumTheExpertMythYouTubeVideo from './VeritasiumTheExpertMythYouTubeVideo'
+import VeritasiumTheExpertMythYouTubeVideo from './my-two-cents-on-burnout-in-software-engineers/VeritasiumTheExpertMythYouTubeVideo'
+import SamAltmanBurnoutYouTubeVideo from './my-two-cents-on-burnout-in-software-engineers/SamAltmanBurnoutYouTubeVideo'
 
 export const components: MDXComponents = {
   Image,
@@ -15,4 +16,5 @@ export const components: MDXComponents = {
   table: TableWrapper,
   BlogNewsletterForm,
   VeritasiumTheExpertMythYouTubeVideo,
+  SamAltmanBurnoutYouTubeVideo,
 }
